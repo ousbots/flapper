@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 mod button;
+mod input;
 
 #[derive(Clone, Eq, PartialEq, Debug, Hash)]
 enum GameMode {
@@ -13,6 +14,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(button::ButtonPlugin)
+        .add_plugin(input::InputPlugin)
         .add_state(GameMode::Menu)
         .add_startup_system(setup)
         .run();
