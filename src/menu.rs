@@ -15,13 +15,13 @@ impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set(SystemSet::on_enter(GameMode::Menu).with_system(setup))
             .add_system_set(SystemSet::on_update(GameMode::Menu).with_system(menu_system))
-            .add_system_set(SystemSet::on_exit(GameMode::Menu).with_system(cleanup_menu));
+            .add_system_set(SystemSet::on_exit(GameMode::Menu).with_system(menu_cleanup));
     }
 }
 
 // The system to handle the menu button actions.
 fn menu_system(
-    mut state: ResMut<State<GameMode>>,
+    mut mode: ResMut<State<GameMode>>,
     mut interaction_query: Query<
         (&Interaction, &mut UiColor, &Children),
         (Changed<Interaction>, With<Button>),
@@ -34,7 +34,7 @@ fn menu_system(
         match *interaction {
             Interaction::Clicked => {
                 text.sections[0].value = "GO!!".to_string();
-                state.set(GameMode::Playing).unwrap();
+                mode.set(GameMode::Playing).unwrap();
             }
             Interaction::Hovered => {
                 text.sections[0].value = "READY?".to_string();
@@ -176,6 +176,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, state: Res<Game
 }
 
 // Delete the menu data.
-fn cleanup_menu(mut commands: Commands, menu_data: Res<MenuData>) {
+fn menu_cleanup(mut commands: Commands, menu_data: Res<MenuData>) {
     commands.entity(menu_data.data).despawn_recursive();
 }
