@@ -1,21 +1,15 @@
 use bevy::prelude::*;
 
-mod button;
+mod game;
 mod input;
-
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
-enum GameMode {
-    Menu,
-    Playing,
-    End,
-}
+mod menu;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(button::ButtonPlugin)
+        .add_plugin(game::GamePlugin)
+        .add_plugin(menu::MenuPlugin)
         .add_plugin(input::InputPlugin)
-        .add_state(GameMode::Menu)
         .add_startup_system(setup)
         .run();
 }
