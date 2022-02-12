@@ -1,18 +1,16 @@
-use crate::game::{GameMode, Position, Velocity};
+use crate::game::GameMode;
 use bevy::prelude::*;
+use bevy_rapier2d::prelude::*;
 
-const FLAP_X_VELOCITY: i64 = 2;
-const FLAP_Y_VELOCITY: i64 = 10;
-const GRAVITY_FACTOR: i64 = 6;
-const RESISTANCE_FACTOR: i64 = 1;
-const TRANSLATION_FACTOR: f32 = 1. / 15.;
+const FLAP_X_FORCE: f32 = 1.5;
+const FLAP_Y_FORCE: f32 = 3.5;
 
 #[derive(PartialEq)]
 enum State {
     Idle,
     Flapping,
     Gliding,
-    Pecking,
+    Walking,
 }
 
 #[derive(PartialEq)]
@@ -23,8 +21,6 @@ enum Direction {
 
 #[derive(Component)]
 pub struct Player {
-    pub position: Position,
-    pub velocity: Velocity,
     state: State,
     direction: Direction,
 }
@@ -34,9 +30,17 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_system_set(SystemSet::on_enter(GameMode::Playing).with_system(setup))
-            .add_system_set(SystemSet::on_update(GameMode::Playing).with_system(player_system))
-            .add_system_set(SystemSet::on_update(GameMode::Playing).with_system(animate_system))
-            .add_system_set(SystemSet::on_update(GameMode::Playing).with_system(physics_system));
+            .add_system_set(
+                SystemSet::on_update(GameMode::Playing)
+                    .with_system(player_system)
+                    .label("player"),
+            )
+            .add_system_set(
+                SystemSet::on_update(GameMode::Playing)
+                    .with_system(animate_system)
+                    .label("animate")
+                    .after("player"),
+            );
     }
 }
 
@@ -55,9 +59,33 @@ fn setup(
             transform: Transform::from_scale(Vec3::splat(2.)),
             ..Default::default()
         })
+        .insert_bundle(RigidBodyBundle {
+            body_type: RigidBodyType::Dynamic.into(),
+            forces: RigidBodyForces {
+                gravity_scale: 1.,
+                ..Default::default()
+            }
+            .into(),
+            damping: RigidBodyDamping {
+                linear_damping: 0.5,
+                ..Default::default()
+            }
+            .into(),
+            mass_properties: RigidBodyMassProps {
+                flags: RigidBodyMassPropsFlags::ROTATION_LOCKED,
+                ..Default::default()
+            }
+            .into(),
+            ..Default::default()
+        })
+        .insert_bundle(ColliderBundle {
+            collider_type: ColliderType::Solid.into(),
+            shape: ColliderShape::cuboid(0.16, 0.16).into(),
+            mass_properties: ColliderMassProps::Density(2.0).into(),
+            ..Default::default()
+        })
+        .insert(RigidBodyPositionSync::Discrete)
         .insert(Player {
-            position: Position { x: 0, y: 0 },
-            velocity: Velocity { x: 0, y: 20 },
             state: State::Gliding,
             direction: Direction::Right,
         })
@@ -65,38 +93,34 @@ fn setup(
 }
 
 // Manages the players velocity and position based on user input.
-fn player_system(keyboard: Res<Input<KeyCode>>, mut query: Query<(&mut Player, &mut Transform)>) {
-    for (mut player, mut transform) in query.iter_mut() {
-        if keyboard.pressed(KeyCode::Up) {
-            player.velocity.y += FLAP_Y_VELOCITY;
-            player.state = State::Flapping;
-        }
+fn player_system(
+    keyboard: Res<Input<KeyCode>>,
+    mut query: Query<(&mut Player, &mut RigidBodyForcesComponent)>,
+) {
+    let (mut player, mut force) = query.single_mut();
 
-        if keyboard.pressed(KeyCode::Left) {
-            player.velocity.x -= FLAP_X_VELOCITY;
-            player.state = State::Flapping;
-            player.direction = Direction::Left;
-        }
+    if keyboard.pressed(KeyCode::Up) {
+        force.force += vector![0., FLAP_Y_FORCE];
+        player.state = State::Flapping;
+    }
 
-        if keyboard.pressed(KeyCode::Right) {
-            player.velocity.x += FLAP_X_VELOCITY;
-            player.state = State::Flapping;
-            player.direction = Direction::Right;
-        }
+    if keyboard.pressed(KeyCode::Left) {
+        force.force += vector![-FLAP_X_FORCE, 0.];
+        player.state = State::Flapping;
+        player.direction = Direction::Left;
+    }
 
-        if !keyboard.any_pressed(vec![KeyCode::Up, KeyCode::Left, KeyCode::Right])
-            && player.state != State::Idle
-            && player.state != State::Pecking
-        {
-            player.state = State::Gliding;
-        }
+    if keyboard.pressed(KeyCode::Right) {
+        force.force += vector![FLAP_X_FORCE, 0.];
+        player.state = State::Flapping;
+        player.direction = Direction::Right;
+    }
 
-        player.position.x += player.velocity.x;
-        player.position.y += player.velocity.y;
-
-        let translation = &mut transform.translation;
-        translation.y += player.velocity.y as f32 * TRANSLATION_FACTOR;
-        translation.x += player.velocity.x as f32 * TRANSLATION_FACTOR;
+    if !keyboard.any_pressed(vec![KeyCode::Up, KeyCode::Left, KeyCode::Right])
+        && player.state != State::Idle
+        && player.state != State::Walking
+    {
+        player.state = State::Gliding;
     }
 }
 
@@ -142,24 +166,12 @@ fn animate_system(
                 State::Idle => {
                     sprite.index = 0;
                 }
-                State::Pecking => {
-                    sprite.index = 0;
+                State::Walking => {
+                    sprite.index += 1;
+                    if sprite.index >= 3 {
+                        sprite.index = 0;
+                    }
                 }
-            }
-        }
-    }
-}
-
-// Simulate gravity and air resistance on the players.
-fn physics_system(mut query: Query<&mut Player>) {
-    for mut player in query.iter_mut() {
-        player.velocity.y -= GRAVITY_FACTOR;
-
-        if player.velocity.x != 0 {
-            if player.velocity.x > 0 {
-                player.velocity.x -= RESISTANCE_FACTOR;
-            } else {
-                player.velocity.x += RESISTANCE_FACTOR;
             }
         }
     }

@@ -1,4 +1,4 @@
-use crate::game::{GameMode, GameState};
+use crate::game::GameMode;
 use bevy::prelude::*;
 
 const READY: Color = Color::rgb(0.15, 0.15, 0.15);
@@ -50,7 +50,7 @@ fn menu_system(
 
 // Initialize the menu.
 // TODO: Fix flexbox alignment: move everything closer the the center vertically.
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>, state: Res<GameState>) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn_bundle(UiCameraBundle::default());
 
     let data_id = commands
@@ -86,40 +86,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, state: Res<Game
                             ..Default::default()
                         },
                         text: Text {
-                            sections: vec![
-                                TextSection {
-                                    value: "high score: ".to_string(),
-                                    style: TextStyle {
-                                        font: asset_server.load("fonts/FiraSans-bold.ttf"),
-                                        font_size: 60.0,
-                                        color: Color::ORANGE,
-                                    },
+                            sections: vec![TextSection {
+                                value: "Flapper".to_string(),
+                                style: TextStyle {
+                                    font: asset_server.load("fonts/FiraSans-bold.ttf"),
+                                    font_size: 60.0,
+                                    color: Color::ORANGE,
                                 },
-                                TextSection {
-                                    value: state.high_score.to_string(),
-                                    style: TextStyle {
-                                        font: asset_server.load("fonts/FiraSans-bold.ttf"),
-                                        font_size: 60.0,
-                                        color: Color::GOLD,
-                                    },
-                                },
-                                TextSection {
-                                    value: "\nscore: ".to_string(),
-                                    style: TextStyle {
-                                        font: asset_server.load("fonts/FiraSans-bold.ttf"),
-                                        font_size: 60.0,
-                                        color: Color::BLACK,
-                                    },
-                                },
-                                TextSection {
-                                    value: state.score.to_string(),
-                                    style: TextStyle {
-                                        font: asset_server.load("fonts/FiraSans-bold.ttf"),
-                                        font_size: 60.0,
-                                        color: Color::GOLD,
-                                    },
-                                },
-                            ],
+                            }],
                             alignment: TextAlignment {
                                 horizontal: HorizontalAlign::Center,
                                 vertical: VerticalAlign::Center,
